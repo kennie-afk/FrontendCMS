@@ -1,13 +1,13 @@
-import React, { useCallback, useState, useEffect } from 'react';
-import SermonForm from './SermonForm';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import DepartmentRegistration from './DepartmentRegistration';
 import Notification from '../Notification';
 import { v4 as uuidv4 } from 'uuid';
 
 const API_BASE = 'http://localhost:9001/api';
 
-const SermonFormContainer = ({ isEditing }) => {
-    const [editingSermon, setEditingSermon] = useState(null);
+const DepartmentRegistrationContainer = ({ isEditing }) => {
+    const [initialData, setInitialData] = useState(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
     const [notifications, setNotifications] = useState([]);
@@ -15,30 +15,20 @@ const SermonFormContainer = ({ isEditing }) => {
     const { id } = useParams();
 
     const addNotification = useCallback((message, type) => {
-        const id = uuidv4();
-        setNotifications((prevNotifications) => [...prevNotifications, { id, message, type }]);
+        const notificationId = uuidv4();
+        setNotifications((prev) => [...prev, { id: notificationId, message, type }]);
     }, []);
 
-    const removeNotification = useCallback((id) => {
-        setNotifications((prevNotifications) =>
-            prevNotifications.filter((notification) => notification.id !== id)
-        );
+    const removeNotification = useCallback((notificationId) => {
+        setNotifications((prev) => prev.filter((notif) => notif.id !== notificationId));
     }, []);
 
-    const fetchSermonToEdit = useCallback(async (sermonId) => {
+    const fetchDepartment = useCallback(async (departmentId) => {
         setLoading(true);
         setError(null);
         try {
             const token = localStorage.getItem('adminToken');
-            if (!token) {
-                addNotification('Authentication token missing. Please log in.', 'error');
-                navigate('/login');
-                setEditingSermon(null);
-                setLoading(false);
-                return;
-            }
-
-            const response = await fetch(`${API_BASE}/sermons/${sermonId}`, {
+            const response = await fetch(`${API_BASE}/departments/${departmentId}`, {
                 headers: {
                     'Authorization': `Bearer ${token}`,
                 },
@@ -50,42 +40,32 @@ const SermonFormContainer = ({ isEditing }) => {
                     return;
                 }
                 const errorData = await response.json();
-                throw new Error(errorData?.message || 'Failed to fetch sermon for editing.');
+                throw new Error(errorData?.message || 'Failed to fetch department details.');
             }
             const data = await response.json();
-            setEditingSermon(data);
+            setInitialData(data);
         } catch (err) {
             setError(err.message);
             addNotification(err.message, 'error');
         } finally {
             setLoading(false);
         }
-    }, [addNotification, navigate]);
+    }, [navigate, addNotification]);
 
     useEffect(() => {
         if (isEditing && id) {
-            fetchSermonToEdit(id);
+            fetchDepartment(id);
         } else {
-            setEditingSermon(null);
+            setInitialData(null);
         }
-    }, [isEditing, id, fetchSermonToEdit]);
+    }, [isEditing, id, fetchDepartment]);
 
     const handleSubmit = async (formData) => {
         setLoading(true);
         setError(null);
         try {
             const token = localStorage.getItem('adminToken');
-            const payload = {
-                sermonId: formData.sermonId,
-                title: formData.title,
-                theme: formData.theme,
-                sermonDate: formData.sermonDate,
-                videoUrl: formData.videoUrl,
-                preacherId: formData.preacherId ? parseInt(formData.preacherId) : null,
-                preacherName: formData.preacherName,
-            };
-
-            const url = isEditing ? `${API_BASE}/sermons/${formData.sermonId}` : `${API_BASE}/sermons`;
+            const url = isEditing ? `${API_BASE}/departments/${formData.departmentId}` : `${API_BASE}/departments`;
             const method = isEditing ? 'PUT' : 'POST';
 
             const response = await fetch(url, {
@@ -94,22 +74,16 @@ const SermonFormContainer = ({ isEditing }) => {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${token}`,
                 },
-                body: JSON.stringify(payload),
+                body: JSON.stringify(formData),
             });
 
             if (!response.ok) {
-                if (response.status === 401 || response.status === 403) {
-                    addNotification('Authentication failed. Please log in.', 'error');
-                    navigate('/login');
-                    return;
-                }
                 const errorData = await response.json();
-                throw new Error(errorData?.message || `Failed to ${isEditing ? 'update' : 'add'} sermon.`);
+                throw new Error(errorData?.message || `Failed to ${isEditing ? 'update' : 'create'} department.`);
             }
 
-            const successMessage = isEditing ? 'Sermon updated successfully!' : 'Sermon added successfully!';
-            addNotification(successMessage, 'success');
-            navigate('/sermons');
+            addNotification(`Department ${isEditing ? 'updated' : 'created'} successfully!`, 'success');
+            navigate('/departments');
         } catch (err) {
             setError(err.message);
             addNotification(err.message, 'error');
@@ -119,7 +93,7 @@ const SermonFormContainer = ({ isEditing }) => {
     };
 
     const handleCancel = () => {
-        navigate('/sermons');
+        navigate('/departments');
     };
 
     return (
@@ -136,13 +110,19 @@ const SermonFormContainer = ({ isEditing }) => {
                 ))}
             </div>
 
-            {loading && isEditing && editingSermon === null && <p className="status red">Loading sermon data...</p>}
+            {loading && <p className="status red">Loading department data...</p>}
             {error && <p className="error">{error}</p>}
-            {isEditing && !editingSermon && !loading && !error && <p className="warning">Sermon not found.</p>}
 
-            <SermonForm onSubmit={handleSubmit} editingSermon={editingSermon} onCancel={handleCancel} />
+            {!loading && (!isEditing || initialData) && (
+                <DepartmentRegistration
+                    onSubmit={handleSubmit}
+                    initialData={isEditing ? initialData : null}
+                    onCancel={handleCancel}
+                    isEditing={isEditing}
+                />
+            )}
         </>
     );
 };
 
-export default SermonFormContainer;
+export default DepartmentRegistrationContainer;

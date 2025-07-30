@@ -2,9 +2,9 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Routes, Route, useNavigate, useParams } from 'react-router-dom';
 import MemberContributionList from './MemberContributionList';
 import MemberContributionForm from './MemberContributionForm';
-import ConfirmDialog from '../ConfirmDialog'; 
+import ConfirmDialog from '../ConfirmDialog';
 import Notification from '../Notification';
-import { v4 as uuidv4 } from 'uuid'; 
+import { v4 as uuidv4 } from 'uuid';
 
 
 const API_BASE = 'http://localhost:9001/api';
@@ -13,10 +13,10 @@ const MemberContributionContainer = () => {
     const [contributions, setContributions] = useState([]);
     const [allMembers, setAllMembers] = useState([]);
     const [loading, setLoading] = useState(false);
-    const [notifications, setNotifications] = useState([]); 
+    const [notifications, setNotifications] = useState([]);
     const [editingContribution, setEditingContribution] = useState(null);
     const [showConfirm, setShowConfirm] = useState(false);
-    const [contributionToDelete, setContributionToDelete] = useState(null);
+    const [contributionToDeleteId, setContributionToDeleteId] = useState(null);
     const navigate = useNavigate();
     const { id: memberIdFromUrl } = useParams();
 
@@ -63,12 +63,12 @@ const MemberContributionContainer = () => {
             );
 
             setContributions(filteredContributions);
-            addNotification('Member contributions loaded successfully!', 'success'); 
+            addNotification('Member contributions loaded successfully!', 'success');
 
         } catch (err) {
-            addNotification(err.message, 'error'); 
+            addNotification(err.message, 'error');
             console.error(err);
-            navigate('/members'); 
+            navigate('/members');
         } finally {
             setLoading(false);
         }
@@ -84,12 +84,12 @@ const MemberContributionContainer = () => {
         const isEditRoute = pathParts[pathParts.length - 2] === 'edit';
 
         if (isEditRoute && currentPathAction) {
-            const contributionToEdit = contributions.find(c => String(c.id) === String(currentPathAction));
+            const contributionToEdit = contributions.find(c => String(c.contributionId) === String(currentPathAction));
             if (contributionToEdit) {
-                const member = allMembers.find(m => String(m.id) === String(contributionToEdit.memberId));
+                const member = allMembers.find(m => String(m.memberId) === String(contributionToEdit.memberId));
                 setEditingContribution({
                     ...contributionToEdit,
-                    contributorName: member ? member.fullName : 'Unknown Member'
+                    contributorName: member ? `${member.firstName} ${member.lastName}` : 'Unknown Member'
                 });
             } else if (!loading && contributions.length > 0) {
                 setEditingContribution(null);
@@ -106,27 +106,27 @@ const MemberContributionContainer = () => {
     };
 
     const handleEditContribution = (contribution) => {
-        const member = allMembers.find(m => String(m.id) === String(contribution.memberId));
+        const member = allMembers.find(m => String(m.memberId) === String(contribution.memberId));
         setEditingContribution({
             ...contribution,
-            contributorName: member ? member.fullName : 'Unknown Member'
+            contributorName: member ? `${member.firstName} ${member.lastName}` : 'Unknown Member'
         });
-        navigate(`/members/${memberIdFromUrl}/contributions/edit/${contribution.id}`);
+        navigate(`/members/${memberIdFromUrl}/contributions/edit/${contribution.contributionId}`);
     };
 
     const handleDeleteClick = (idToDelete) => {
-        setContributionToDelete(idToDelete);
+        setContributionToDeleteId(idToDelete);
         setShowConfirm(true);
     };
 
     const handleConfirmDelete = async () => {
         setShowConfirm(false);
-        if (contributionToDelete) {
+        if (contributionToDeleteId) {
             setLoading(true);
-            setNotifications([]); 
+            setNotifications([]);
             try {
                 const token = localStorage.getItem('adminToken');
-                const response = await fetch(`${API_BASE}/member-contributions/${contributionToDelete}`, {
+                const response = await fetch(`${API_BASE}/member-contributions/${contributionToDeleteId}`, {
                     method: 'DELETE',
                     headers: {
                         'Authorization': `Bearer ${token}`,
@@ -137,20 +137,20 @@ const MemberContributionContainer = () => {
                     throw new Error(errorData?.message || 'Failed to delete member contribution.');
                 }
                 fetchAllData();
-                addNotification('Contribution deleted successfully!', 'success'); 
+                addNotification('Contribution deleted successfully!', 'success');
             } catch (err) {
-                addNotification(err.message, 'error'); 
+                addNotification(err.message, 'error');
                 console.error(err);
             } finally {
                 setLoading(false);
-                setContributionToDelete(null);
+                setContributionToDeleteId(null);
             }
         }
     };
 
     const handleCancelDelete = () => {
         setShowConfirm(false);
-        setContributionToDelete(null);
+        setContributionToDeleteId(null);
     };
 
     const handleSaveContribution = async (formData) => {
@@ -158,19 +158,16 @@ const MemberContributionContainer = () => {
         setNotifications([]);
         try {
             const token = localStorage.getItem('adminToken');
-            const isUpdate = formData.id !== undefined && formData.id !== null && formData.id !== '';
-            const url = isUpdate ? `${API_BASE}/member-contributions/${formData.id}` : `${API_BASE}/member-contributions`;
+            const isUpdate = formData.contributionId !== undefined && formData.contributionId !== null;
+            const url = isUpdate ? `${API_BASE}/member-contributions/${formData.contributionId}` : `${API_BASE}/member-contributions`;
             const method = isUpdate ? 'PUT' : 'POST';
 
-            const member = allMembers.find(m => String(m.id) === String(memberIdFromUrl));
             const submissionData = {
                 ...formData,
-                memberId: memberIdFromUrl,
-                contributorName: member ? member.fullName : 'Unknown Member'
+                memberId: parseInt(memberIdFromUrl),
+                amount: parseFloat(formData.amount),
+                contributionId: formData.contributionId || undefined,
             };
-            if (!isUpdate) {
-                delete submissionData.id;
-            }
 
             const response = await fetch(url, {
                 method: method,
@@ -186,7 +183,7 @@ const MemberContributionContainer = () => {
                 throw new Error(errorData?.message || `Failed to ${isUpdate ? 'update' : 'add'} member contribution.`);
             }
             fetchAllData();
-            addNotification(`Contribution ${isUpdate ? 'updated' : 'added'} successfully!`, 'success'); 
+            addNotification(`Contribution ${isUpdate ? 'updated' : 'added'} successfully!`, 'success');
             navigate(`/members/${memberIdFromUrl}/contributions`);
         } catch (err) {
             addNotification(err.message, 'error');
@@ -202,8 +199,8 @@ const MemberContributionContainer = () => {
     };
 
     const getSelectedMemberName = () => {
-        const member = allMembers.find(m => String(m.id) === String(memberIdFromUrl));
-        return member ? member.fullName : 'Loading Member...';
+        const member = allMembers.find(m => String(m.memberId) === String(memberIdFromUrl));
+        return member ? `${member.firstName} ${member.lastName}` : 'Loading Member...';
     };
 
     return (
@@ -237,7 +234,7 @@ const MemberContributionContainer = () => {
                             contributions={contributions}
                             members={allMembers}
                             onEdit={handleEditContribution}
-                            onDelete={handleDeleteClick} 
+                            onDelete={handleDeleteClick}
                             onAdd={handleAddContribution}
                         />
                     }

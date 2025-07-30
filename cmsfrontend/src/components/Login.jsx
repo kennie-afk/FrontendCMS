@@ -7,9 +7,26 @@ const Login = ({ onLogin }) => {
     const [error, setError] = useState('');
     const navigate = useNavigate();
 
+    const bypassLoginDev = import.meta.env.VITE_BYPASS_LOGIN_DEV === 'true';
+
     const handleSubmit = async (e) => {
         e.preventDefault();
         setError('');
+
+      
+        if (bypassLoginDev) {
+            console.warn("DEV MODE: Bypassing actual login API call.");
+
+           
+            const dummyToken = import.meta.env.VITE_DEV_JWT_TOKEN || 'fallback-dev-token-12345';
+
+            localStorage.setItem('adminToken', dummyToken);
+            onLogin(dummyToken); 
+            navigate('/'); 
+
+            return;
+        }
+
 
         try {
             const response = await fetch('http://localhost:9001/api/login', {
@@ -33,7 +50,7 @@ const Login = ({ onLogin }) => {
             }
         } catch (error) {
             console.error("Login failed:", error);
-            setError('Failed to connect to the server.');
+            setError('Failed to connect to the server!');
         }
     };
 
@@ -41,7 +58,13 @@ const Login = ({ onLogin }) => {
         <div className="login-wrapper">
             <div className="registration-form">
                 <h2>Admin Login</h2>
+                {bypassLoginDev && (
+                    <p style={{color: 'orange', fontWeight: 'bold', border: '1px solid orange', padding: '5px', borderRadius: '5px', marginBottom: '15px'}}>
+                        Development Mode: Bypassing Login for Development purposes...
+                    </p>
+                )}
                 {error && <p className="error">{error}</p>}
+                
                 <form onSubmit={handleSubmit}>
                     <label>Email:</label>
                     <input
@@ -63,7 +86,6 @@ const Login = ({ onLogin }) => {
                     />
                     <button type="submit">Login</button>
                 </form>
-                
             </div>
         </div>
     );

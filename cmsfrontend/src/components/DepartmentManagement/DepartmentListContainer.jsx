@@ -1,19 +1,19 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import MemberList from './MemberList';
+import DepartmentList from './DepartmentList';
 import Notification from '../Notification';
 import ConfirmDialog from '../ConfirmDialog';
 import { v4 as uuidv4 } from 'uuid';
 
 const API_BASE = 'http://localhost:9001/api';
 
-const MemberListContainer = () => {
-    const [members, setMembers] = useState([]);
+const DepartmentListContainer = () => {
+    const [departments, setDepartments] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [notifications, setNotifications] = useState([]);
     const [showConfirm, setShowConfirm] = useState(false);
-    const [memberToDeleteId, setMemberToDeleteId] = useState(null);
+    const [departmentToDeleteId, setDepartmentToDeleteId] = useState(null);
     const navigate = useNavigate();
 
     const addNotification = useCallback((message, type) => {
@@ -25,12 +25,12 @@ const MemberListContainer = () => {
         setNotifications((prev) => prev.filter((notif) => notif.id !== id));
     }, []);
 
-    const fetchMembers = useCallback(async () => {
+    const fetchDepartments = useCallback(async () => {
         setLoading(true);
         setError(null);
         try {
             const token = localStorage.getItem('adminToken');
-            const response = await fetch(`${API_BASE}/members`, {
+            const response = await fetch(`${API_BASE}/departments`, {
                 headers: {
                     'Authorization': `Bearer ${token}`,
                 },
@@ -42,10 +42,10 @@ const MemberListContainer = () => {
                     return;
                 }
                 const errorData = await response.json();
-                throw new Error(errorData?.message || 'Failed to fetch members.');
+                throw new Error(errorData?.message || 'Failed to fetch departments.');
             }
             const data = await response.json();
-            setMembers(data);
+            setDepartments(data);
         } catch (err) {
             setError(err.message);
             addNotification(err.message, 'error');
@@ -55,27 +55,27 @@ const MemberListContainer = () => {
     }, [navigate, addNotification]);
 
     useEffect(() => {
-        fetchMembers();
-    }, [fetchMembers]);
+        fetchDepartments();
+    }, [fetchDepartments]);
 
-    const handleEdit = (member) => {
-        navigate(`/members/edit/${member.memberId}`);
+    const handleEdit = (department) => {
+        navigate(`/departments/edit/${department.departmentId}`);
     };
 
-    const handleDeleteClick = (memberId) => {
-        setMemberToDeleteId(memberId);
+    const handleDeleteClick = (departmentId) => {
+        setDepartmentToDeleteId(departmentId);
         setShowConfirm(true);
     };
 
     const handleConfirmDelete = async () => {
         setShowConfirm(false);
-        if (!memberToDeleteId) return;
+        if (!departmentToDeleteId) return;
 
         setLoading(true);
         setError(null);
         try {
             const token = localStorage.getItem('adminToken');
-            const response = await fetch(`${API_BASE}/members/${memberToDeleteId}`, {
+            const response = await fetch(`${API_BASE}/departments/${departmentToDeleteId}`, {
                 method: 'DELETE',
                 headers: {
                     'Authorization': `Bearer ${token}`,
@@ -83,31 +83,26 @@ const MemberListContainer = () => {
             });
             if (!response.ok) {
                 const errorData = await response.json();
-                throw new Error(errorData?.message || 'Failed to delete member.');
+                throw new Error(errorData?.message || 'Failed to delete department.');
             }
-            addNotification('Member deleted successfully!', 'success');
-            fetchMembers();
+            addNotification('Department deleted successfully!', 'success');
+            fetchDepartments();
         } catch (err) {
             setError(err.message);
             addNotification(err.message, 'error');
-            console.error(err);
         } finally {
             setLoading(false);
-            setMemberToDeleteId(null);
+            setDepartmentToDeleteId(null);
         }
     };
 
     const handleCancelDelete = () => {
         setShowConfirm(false);
-        setMemberToDeleteId(null);
+        setDepartmentToDeleteId(null);
     };
 
-    const handleViewContributions = (memberId) => {
-        navigate(`/members/${memberId}/contributions`);
-    };
-
-    const handleAddMember = () => {
-        navigate('/members/add');
+    const handleAddDepartment = () => {
+        navigate('/departments/add');
     };
 
     return (
@@ -126,24 +121,23 @@ const MemberListContainer = () => {
 
             {showConfirm && (
                 <ConfirmDialog
-                    message="Are you sure you want to delete this member?"
+                    message="Are you sure you want to delete this department?"
                     onConfirm={handleConfirmDelete}
                     onCancel={handleCancelDelete}
                 />
             )}
 
-            {loading && <p className="status red">Loading members...</p>}
+            {loading && <p className="status red">Loading departments...</p>}
             {error && <p className="error">{error}</p>}
 
-            <MemberList
-                members={members}
+            <DepartmentList
+                departments={departments}
                 onEdit={handleEdit}
                 onDelete={handleDeleteClick}
-                onViewContributions={handleViewContributions}
-                onAdd={handleAddMember}
+                onAdd={handleAddDepartment}
             />
         </>
     );
 };
 
-export default MemberListContainer;
+export default DepartmentListContainer;

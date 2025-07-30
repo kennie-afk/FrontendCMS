@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import GeneralMemberContributionsList from './GeneralMemberContributionsList';
-import { v4 as uuidv4 } from 'uuid'; 
-import Notification from '../Notification'; 
+import { v4 as uuidv4 } from 'uuid';
+import Notification from '../Notification';
 
 const API_BASE = 'http://localhost:9001/api';
 
@@ -10,7 +10,7 @@ const GeneralMemberContributionsContainer = () => {
     const [allContributions, setAllContributions] = useState([]);
     const [allMembers, setAllMembers] = useState([]);
     const [loading, setLoading] = useState(false);
-    const [notifications, setNotifications] = useState([]); 
+    const [notifications, setNotifications] = useState([]);
     const navigate = useNavigate();
 
     const addNotification = (message, type) => {
@@ -24,7 +24,7 @@ const GeneralMemberContributionsContainer = () => {
 
     const fetchAllContributionsAndMembers = useCallback(async () => {
         setLoading(true);
-        setNotifications([]); 
+        setNotifications([]);
         try {
             const token = localStorage.getItem('adminToken');
             if (!token) {
@@ -51,10 +51,10 @@ const GeneralMemberContributionsContainer = () => {
             }
             const contributionsData = await contributionsResponse.json();
             setAllContributions(contributionsData);
-            addNotification('All member contributions loaded successfully!', 'success'); 
+            addNotification('All member contributions loaded successfully!', 'success');
 
         } catch (err) {
-            addNotification(err.message, 'error'); 
+            addNotification(err.message, 'error');
             console.error('Error fetching general contributions data:', err);
         } finally {
             setLoading(false);

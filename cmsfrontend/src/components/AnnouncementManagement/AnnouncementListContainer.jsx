@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import AnnouncementList from './AnnouncementList';
 import { useNavigate } from 'react-router-dom';
-import Notification from '../Notification'; 
-import ConfirmDialog from '../ConfirmDialog'; 
-import { v4 as uuidv4 } from 'uuid'; 
+import Notification from '../Notification';
+import ConfirmDialog from '../ConfirmDialog';
+import { v4 as uuidv4 } from 'uuid';
 
 const API_BASE = 'http://localhost:9001/api';
 
@@ -12,8 +12,8 @@ const AnnouncementListContainer = () => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [notifications, setNotifications] = useState([]);
-    const [showConfirm, setShowConfirm] = useState(false); 
-    const [announcementToDelete, setAnnouncementToDelete] = useState(null); 
+    const [showConfirm, setShowConfirm] = useState(false);
+    const [announcementToDeleteId, setAnnouncementToDeleteId] = useState(null);
     const navigate = useNavigate();
 
     const addNotification = useCallback((message, type) => {
@@ -30,7 +30,85 @@ const AnnouncementListContainer = () => {
         setError(null);
         try {
             const token = localStorage.getItem('adminToken');
+            if (!token) {
+                addNotification('Authentication token missing. Please log in.', 'error');
+                navigate('/login');
+                setAnnouncements([]);
+                setLoading(false);
+                return;
+            }
+
             const response = await fetch(`${API_BASE}/announcements`, {
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                },
+            });
+
+            let data;
+            try {
+                data = await response.json();
+            } catch {
+                const textResponse = await response.text();
+                addNotification(`Server sent invalid data. Error: ${textResponse.substring(0, 100)}...`, 'error');
+                setError('Received invalid data from server.');
+                setAnnouncements([]);
+                setLoading(false);
+                return;
+            }
+
+            if (!response.ok) {
+                if (response.status === 401 || response.status === 403) {
+                    addNotification('Authentication failed. Please log in.', 'error');
+                    navigate('/login');
+                    setAnnouncements([]);
+                    return;
+                }
+                throw new Error(data?.message || data?.error || `Failed to fetch announcements. Status: ${response.status}`);
+            }
+
+            if (!Array.isArray(data)) {
+                addNotification('API returned unexpected data format. Expected an array.', 'error');
+                setError('API returned unexpected data format.');
+                setAnnouncements([]);
+                setLoading(false);
+                return;
+            }
+
+            setAnnouncements(data);
+            addNotification('Announcements loaded successfully!', 'success');
+
+        } catch (err) {
+            setError(err.message);
+            addNotification(`Error fetching announcements: ${err.message}`, 'error');
+            setAnnouncements([]);
+        } finally {
+            setLoading(false);
+        }
+    }, [navigate, addNotification]);
+
+    useEffect(() => {
+        fetchAnnouncements();
+    }, [fetchAnnouncements]);
+
+    const handleEdit = (announcement) => {
+        navigate(`/announcements/edit/${announcement.announcementId}`);
+    };
+
+    const handleDeleteClick = (announcementId) => {
+        setAnnouncementToDeleteId(announcementId);
+        setShowConfirm(true);
+    };
+
+    const handleConfirmDelete = async () => {
+        setShowConfirm(false);
+        if (!announcementToDeleteId) return;
+
+        setLoading(true);
+        setError(null);
+        try {
+            const token = localStorage.getItem('adminToken');
+            const response = await fetch(`${API_BASE}/announcements/${announcementToDeleteId}`, {
+                method: 'DELETE',
                 headers: {
                     'Authorization': `Bearer ${token}`,
                 },
@@ -42,65 +120,26 @@ const AnnouncementListContainer = () => {
                     return;
                 }
                 const errorData = await response.json();
-                throw new Error(errorData?.message || 'Failed to fetch announcements.');
-            }
-            const data = await response.json();
-            setAnnouncements(data);
-        } catch (err) {
-            setError(err.message);
-            addNotification(err.message, 'error');
-            console.error(err);
-        } finally {
-            setLoading(false);
-        }
-    }, [navigate, addNotification]);
-
-    useEffect(() => {
-        fetchAnnouncements();
-    }, [fetchAnnouncements]);
-
-    const handleEdit = (announcement) => {
-        navigate(`/announcements/edit/${announcement.id}`);
-    };
-
-    const handleDeleteClick = (id) => {
-        setAnnouncementToDelete(id);
-        setShowConfirm(true);
-    };
-
-    const handleConfirmDelete = async () => {
-        setShowConfirm(false); 
-        if (!announcementToDelete) return;
-
-        setLoading(true);
-        setError(null);
-        try {
-            const token = localStorage.getItem('adminToken');
-            const response = await fetch(`${API_BASE}/announcements/${announcementToDelete}`, {
-                method: 'DELETE',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                },
-            });
-            if (!response.ok) {
-                const errorData = await response.json();
                 throw new Error(errorData?.message || 'Failed to delete announcement.');
             }
             addNotification('Announcement deleted successfully!', 'success');
-            fetchAnnouncements(); 
+            fetchAnnouncements();
         } catch (err) {
             setError(err.message);
             addNotification(err.message, 'error');
-            console.error(err);
         } finally {
             setLoading(false);
-            setAnnouncementToDelete(null); 
+            setAnnouncementToDeleteId(null);
         }
     };
 
     const handleCancelDelete = () => {
         setShowConfirm(false);
-        setAnnouncementToDelete(null);
+        setAnnouncementToDeleteId(null);
+    };
+
+    const handleAddAnnouncement = () => {
+        navigate('/announcements/add');
     };
 
     return (
@@ -126,9 +165,14 @@ const AnnouncementListContainer = () => {
             )}
 
             {loading && <p className="status red">Loading announcements...</p>}
-            {error && <p className="error">{error}</p>} 
+            {error && <p className="error">{error}</p>}
 
-            <AnnouncementList announcements={announcements} onEdit={handleEdit} onDelete={handleDeleteClick} />
+            <AnnouncementList
+                announcements={announcements}
+                onEdit={handleEdit}
+                onDelete={handleDeleteClick}
+                onAddAnnouncement={handleAddAnnouncement}
+            />
         </>
     );
 };

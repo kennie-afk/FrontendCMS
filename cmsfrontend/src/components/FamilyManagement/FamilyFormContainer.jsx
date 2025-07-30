@@ -1,13 +1,14 @@
 import React, { useCallback, useState, useEffect } from 'react';
-import SermonForm from './SermonForm';
+import FamilyForm from './FamilyForm';
 import { useNavigate, useParams } from 'react-router-dom';
 import Notification from '../Notification';
 import { v4 as uuidv4 } from 'uuid';
 
 const API_BASE = 'http://localhost:9001/api';
 
-const SermonFormContainer = ({ isEditing }) => {
-    const [editingSermon, setEditingSermon] = useState(null);
+const FamilyFormContainer = ({ isEditing }) => {
+    const [editingFamily, setEditingFamily] = useState(null);
+    const [allMembers, setAllMembers] = useState([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
     const [notifications, setNotifications] = useState([]);
@@ -16,16 +17,14 @@ const SermonFormContainer = ({ isEditing }) => {
 
     const addNotification = useCallback((message, type) => {
         const id = uuidv4();
-        setNotifications((prevNotifications) => [...prevNotifications, { id, message, type }]);
+        setNotifications((prev) => [...prev, { id, message, type }]);
     }, []);
 
     const removeNotification = useCallback((id) => {
-        setNotifications((prevNotifications) =>
-            prevNotifications.filter((notification) => notification.id !== id)
-        );
+        setNotifications((prev) => prev.filter((notif) => notif.id !== id));
     }, []);
 
-    const fetchSermonToEdit = useCallback(async (sermonId) => {
+    const fetchInitialData = useCallback(async (familyId) => {
         setLoading(true);
         setError(null);
         try {
@@ -33,59 +32,53 @@ const SermonFormContainer = ({ isEditing }) => {
             if (!token) {
                 addNotification('Authentication token missing. Please log in.', 'error');
                 navigate('/login');
-                setEditingSermon(null);
                 setLoading(false);
                 return;
             }
 
-            const response = await fetch(`${API_BASE}/sermons/${sermonId}`, {
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                },
-            });
-            if (!response.ok) {
-                if (response.status === 401 || response.status === 403) {
-                    addNotification('Authentication failed. Please log in.', 'error');
-                    navigate('/login');
-                    return;
-                }
-                const errorData = await response.json();
-                throw new Error(errorData?.message || 'Failed to fetch sermon for editing.');
+            const [membersResponse, familyResponse] = await Promise.all([
+                fetch(`${API_BASE}/members`, { headers: { 'Authorization': `Bearer ${token}` } }),
+                isEditing ? fetch(`${API_BASE}/families/${familyId}`, { headers: { 'Authorization': `Bearer ${token}` } }) : Promise.resolve(null)
+            ]);
+
+            if (!membersResponse.ok) {
+                const errorData = await membersResponse.json();
+                throw new Error(errorData?.message || 'Failed to fetch members.');
             }
-            const data = await response.json();
-            setEditingSermon(data);
+            const membersData = await membersResponse.json();
+            setAllMembers(membersData);
+
+            if (isEditing && familyResponse && !familyResponse.ok) {
+                const errorData = await familyResponse.json();
+                throw new Error(errorData?.message || 'Failed to fetch family for editing.');
+            }
+
+            if (isEditing && familyResponse) {
+                const familyData = await familyResponse.json();
+                setEditingFamily(familyData);
+            }
+
+            addNotification('Data loaded successfully!', 'success');
+
         } catch (err) {
             setError(err.message);
             addNotification(err.message, 'error');
+            console.error(err);
         } finally {
             setLoading(false);
         }
-    }, [addNotification, navigate]);
+    }, [navigate, addNotification, isEditing]);
 
     useEffect(() => {
-        if (isEditing && id) {
-            fetchSermonToEdit(id);
-        } else {
-            setEditingSermon(null);
-        }
-    }, [isEditing, id, fetchSermonToEdit]);
+        fetchInitialData(id);
+    }, [fetchInitialData, id]);
 
     const handleSubmit = async (formData) => {
         setLoading(true);
         setError(null);
         try {
             const token = localStorage.getItem('adminToken');
-            const payload = {
-                sermonId: formData.sermonId,
-                title: formData.title,
-                theme: formData.theme,
-                sermonDate: formData.sermonDate,
-                videoUrl: formData.videoUrl,
-                preacherId: formData.preacherId ? parseInt(formData.preacherId) : null,
-                preacherName: formData.preacherName,
-            };
-
-            const url = isEditing ? `${API_BASE}/sermons/${formData.sermonId}` : `${API_BASE}/sermons`;
+            const url = isEditing ? `${API_BASE}/families/${formData.familyId}` : `${API_BASE}/families`;
             const method = isEditing ? 'PUT' : 'POST';
 
             const response = await fetch(url, {
@@ -94,7 +87,7 @@ const SermonFormContainer = ({ isEditing }) => {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${token}`,
                 },
-                body: JSON.stringify(payload),
+                body: JSON.stringify(formData),
             });
 
             if (!response.ok) {
@@ -104,22 +97,23 @@ const SermonFormContainer = ({ isEditing }) => {
                     return;
                 }
                 const errorData = await response.json();
-                throw new Error(errorData?.message || `Failed to ${isEditing ? 'update' : 'add'} sermon.`);
+                throw new Error(errorData?.message || `Failed to ${isEditing ? 'update' : 'add'} family.`);
             }
 
-            const successMessage = isEditing ? 'Sermon updated successfully!' : 'Sermon added successfully!';
+            const successMessage = isEditing ? 'Family updated successfully!' : 'Family added successfully!';
             addNotification(successMessage, 'success');
-            navigate('/sermons');
+            navigate('/families');
         } catch (err) {
             setError(err.message);
             addNotification(err.message, 'error');
+            console.error(err);
         } finally {
             setLoading(false);
         }
     };
 
     const handleCancel = () => {
-        navigate('/sermons');
+        navigate('/families');
     };
 
     return (
@@ -136,13 +130,20 @@ const SermonFormContainer = ({ isEditing }) => {
                 ))}
             </div>
 
-            {loading && isEditing && editingSermon === null && <p className="status red">Loading sermon data...</p>}
+            {loading && <p className="status red">Loading data...</p>}
             {error && <p className="error">{error}</p>}
-            {isEditing && !editingSermon && !loading && !error && <p className="warning">Sermon not found.</p>}
+            {isEditing && !editingFamily && !loading && !error && <p className="warning">Family not found.</p>}
 
-            <SermonForm onSubmit={handleSubmit} editingSermon={editingSermon} onCancel={handleCancel} />
+            {!loading && (isEditing ? editingFamily !== null : true) && (
+                <FamilyForm
+                    onSubmit={handleSubmit}
+                    editingFamily={editingFamily}
+                    onCancel={handleCancel}
+                    allMembers={allMembers}
+                />
+            )}
         </>
     );
 };
 
-export default SermonFormContainer;
+export default FamilyFormContainer;

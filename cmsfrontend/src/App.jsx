@@ -7,7 +7,10 @@ import MemberManagementRoutes from './components/MemberManagement/MemberManageme
 import EventManagementRoutes from './components/EventManagement/EventManagementRoutes';
 import AnnouncementManagementRoutes from './components/AnnouncementManagement/AnnouncementManagementRoutes';
 import SermonManagementRoutes from './components/SermonManagement/SermonManagementRoutes';
-import FinancialManagementRoutes from './components/FinancialManagement/FinancialManagementRoutes'; 
+import FinancialManagementRoutes from './components/FinancialManagement/FinancialManagementRoutes';
+import AttendanceManagementRoutes from './components/AttendanceManagement/AttendanceManagementRoutes';
+import FamilyManagementRoutes from './components/FamilyManagement/FamilyManagementRoutes';
+import DepartmentManagementRoutes from './components/DepartmentManagement/DepartmentManagementRoutes';
 
 const App = () => {
     const [token, setToken] = useState(localStorage.getItem('adminToken'));
@@ -46,7 +49,10 @@ const App = () => {
                                 <Route path="/events/*" element={<EventManagementRoutes />} />
                                 <Route path="/announcements/*" element={<AnnouncementManagementRoutes />} />
                                 <Route path="/sermons/*" element={<SermonManagementRoutes />} />
-                                <Route path="/financial-management/*" element={<FinancialManagementRoutes />} /> {/* Updated path for clarity */}
+                                <Route path="/financial-management/*" element={<FinancialManagementRoutes />} />
+                                <Route path="/attendance/*" element={<AttendanceManagementRoutes />} />
+                                <Route path="/families/*" element={<FamilyManagementRoutes />} />
+                                <Route path="/departments/*" element={<DepartmentManagementRoutes />} />
                             </Routes>
                         </AppWrapper>
                     ) : (

@@ -23,24 +23,28 @@ const MemberList = ({ members, onEdit, onDelete, onViewContributions, onAdd }) =
                     <table className="data-table">
                         <thead>
                             <tr>
-                                <th className="text-light">Full Name</th>
+                                <th className="text-light">First Name</th>
+                                <th className="text-light">Last Name</th>
                                 <th className="text-light">Email</th>
-                                <th className="text-light">Phone</th>
-                                <th className="text-light">Address</th>
+                                <th className="text-light">Phone Number</th>
+                                <th className="text-light">Gender</th>
+                                <th className="text-light">Joined Date</th>
                                 <th className="text-light">Actions</th>
                             </tr>
                         </thead>
                         <tbody>
                             {members.map((member) => (
-                                <tr key={member.id}>
-                                    <td>{member.fullName}</td>
+                                <tr key={member.memberId}>
+                                    <td>{member.firstName}</td>
+                                    <td>{member.lastName}</td>
                                     <td>{member.email}</td>
-                                    <td>{member.phone}</td>
-                                    <td>{member.address}</td>
+                                    <td>{member.phoneNumber}</td>
+                                    <td>{member.gender}</td>
+                                    <td>{member.joinedDate ? new Date(member.joinedDate).toLocaleDateString() : 'N/A'}</td>
                                     <td>
                                         <div className="actions-container" style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center' }}>
                                             <button
-                                                onClick={() => onViewContributions(member.id)}
+                                                onClick={() => onViewContributions(member.memberId)}
                                                 className="view-btn"
                                             >
                                                 Contributions
@@ -52,7 +56,7 @@ const MemberList = ({ members, onEdit, onDelete, onViewContributions, onAdd }) =
                                                 Edit
                                             </button>
                                             <button
-                                                onClick={() => onDelete(member.id)}
+                                                onClick={() => onDelete(member.memberId)}
                                                 className="delete-btn"
                                             >
                                                 Delete

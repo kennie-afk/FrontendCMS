@@ -24,9 +24,10 @@ const MemberContributionList = ({ contributions, members, onEdit, onDelete, onAd
                         <thead>
                             <tr>
                                 <th className="text-light">Member ID</th>
-                                <th className="text-light">Member Name</th> 
+                                <th className="text-light">Member Name</th>
                                 <th className="text-light">Date</th>
                                 <th className="text-light">Amount</th>
+                                <th className="text-light">Contribution Type</th>
                                 <th className="text-light">Mode of Payment</th>
                                 <th className="text-light">Comments</th>
                                 <th className="text-light">Actions</th>
@@ -34,15 +35,16 @@ const MemberContributionList = ({ contributions, members, onEdit, onDelete, onAd
                         </thead>
                         <tbody>
                             {contributions.map((contribution) => {
-                                const member = members.find(m => m.id === contribution.memberId);
-                                const contributorName = member ? member.fullName : 'N/A';
+                                const member = members.find(m => String(m.memberId) === String(contribution.memberId));
+                                const contributorName = member ? `${member.firstName} ${member.lastName}` : 'N/A';
 
                                 return (
-                                    <tr key={contribution.id}>
+                                    <tr key={contribution.contributionId}>
                                         <td>{contribution.memberId}</td>
-                                        <td>{contributorName}</td> 
+                                        <td>{contributorName}</td>
                                         <td>{new Date(contribution.dateOfContribution).toLocaleDateString()}</td>
                                         <td>${Number(contribution.amount).toFixed(2)}</td>
+                                        <td>{contribution.contributionType || 'N/A'}</td>
                                         <td>{contribution.modeOfPayment}</td>
                                         <td>{contribution.comments || 'N/A'}</td>
                                         <td>
@@ -54,7 +56,7 @@ const MemberContributionList = ({ contributions, members, onEdit, onDelete, onAd
                                                     Edit
                                                 </button>
                                                 <button
-                                                    onClick={() => onDelete(contribution.id)}
+                                                    onClick={() => onDelete(contribution.contributionId)}
                                                     className="delete-btn"
                                                 >
                                                     Delete

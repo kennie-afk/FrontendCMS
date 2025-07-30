@@ -1,33 +1,31 @@
-import React, { useCallback, useState, useEffect } from 'react';
-import SermonList from './SermonList';
+import React, { useState, useEffect, useCallback } from 'react';
+import FamilyList from './FamilyList';
 import { useNavigate } from 'react-router-dom';
-import ConfirmDialog from '../ConfirmDialog';
 import Notification from '../Notification';
+import ConfirmDialog from '../ConfirmDialog';
 import { v4 as uuidv4 } from 'uuid';
 
 const API_BASE = 'http://localhost:9001/api';
 
-const SermonListContainer = () => {
-    const [sermons, setSermons] = useState([]);
+const FamilyListContainer = () => {
+    const [families, setFamilies] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
-    const [showConfirm, setShowConfirm] = useState(false);
-    const [sermonToDeleteId, setSermonToDeleteId] = useState(null);
     const [notifications, setNotifications] = useState([]);
+    const [showConfirm, setShowConfirm] = useState(false);
+    const [familyIdToDelete, setFamilyIdToDelete] = useState(null);
     const navigate = useNavigate();
 
     const addNotification = useCallback((message, type) => {
         const id = uuidv4();
-        setNotifications((prevNotifications) => [...prevNotifications, { id, message, type }]);
+        setNotifications((prev) => [...prev, { id, message, type }]);
     }, []);
 
     const removeNotification = useCallback((id) => {
-        setNotifications((prevNotifications) =>
-            prevNotifications.filter((notification) => notification.id !== id)
-        );
+        setNotifications((prev) => prev.filter((notif) => notif.id !== id));
     }, []);
 
-    const fetchSermons = useCallback(async () => {
+    const fetchFamilies = useCallback(async () => {
         setLoading(true);
         setError(null);
         try {
@@ -35,12 +33,12 @@ const SermonListContainer = () => {
             if (!token) {
                 addNotification('Authentication token missing. Please log in.', 'error');
                 navigate('/login');
-                setSermons([]);
+                setFamilies([]);
                 setLoading(false);
                 return;
             }
 
-            const response = await fetch(`${API_BASE}/sermons`, {
+            const response = await fetch(`${API_BASE}/families`, {
                 headers: {
                     'Authorization': `Bearer ${token}`,
                 },
@@ -49,11 +47,13 @@ const SermonListContainer = () => {
             let data;
             try {
                 data = await response.json();
-            } catch {
+            } catch (jsonParseError) {
                 const textResponse = await response.text();
+                console.error('JSON parsing error:', jsonParseError);
+                console.error('Server returned non-JSON:', textResponse);
                 addNotification(`Server sent invalid data. Error: ${textResponse.substring(0, 100)}...`, 'error');
                 setError('Received invalid data from server.');
-                setSermons([]);
+                setFamilies([]);
                 setLoading(false);
                 return;
             }
@@ -62,54 +62,54 @@ const SermonListContainer = () => {
                 if (response.status === 401 || response.status === 403) {
                     addNotification('Authentication failed. Please log in.', 'error');
                     navigate('/login');
-                    setSermons([]);
+                    setFamilies([]);
                     return;
                 }
-                throw new Error(data?.message || data?.error || `Failed to fetch sermons. Status: ${response.status}`);
+                throw new Error(data?.message || data?.error || `Failed to fetch families. Status: ${response.status}`);
             }
 
             if (!Array.isArray(data)) {
+                console.error("API did not return an array for families:", data);
                 addNotification('API returned unexpected data format. Expected an array.', 'error');
                 setError('API returned unexpected data format.');
-                setSermons([]);
+                setFamilies([]);
                 setLoading(false);
                 return;
             }
 
-            setSermons(data);
-            addNotification('Sermons loaded successfully!', 'success');
+            setFamilies(data);
+            addNotification('Families loaded successfully!', 'success');
 
         } catch (err) {
             setError(err.message);
-            addNotification(`Error fetching sermons: ${err.message}`, 'error');
-            setSermons([]);
+            addNotification(`Error fetching families: ${err.message}`, 'error');
+            console.error('Fetch error:', err);
+            setFamilies([]);
         } finally {
             setLoading(false);
         }
     }, [navigate, addNotification]);
 
     useEffect(() => {
-        fetchSermons();
-    }, [fetchSermons]);
+        fetchFamilies();
+    }, [fetchFamilies]);
 
-    const handleEdit = (sermon) => {
-        navigate(`/sermons/edit/${sermon.sermonId}`);
+    const handleEdit = (family) => {
+        navigate(`/families/edit/${family.familyId}`);
     };
 
-    const handleDeleteClick = (sermonId) => {
-        setSermonToDeleteId(sermonId);
+    const handleDelete = (id) => {
+        setFamilyIdToDelete(id);
         setShowConfirm(true);
     };
 
-    const handleConfirmDelete = async () => {
+    const confirmDelete = async () => {
         setShowConfirm(false);
-        if (!sermonToDeleteId) return;
-
         setLoading(true);
         setError(null);
         try {
             const token = localStorage.getItem('adminToken');
-            const response = await fetch(`${API_BASE}/sermons/${sermonToDeleteId}`, {
+            const response = await fetch(`${API_BASE}/families/${familyIdToDelete}`, {
                 method: 'DELETE',
                 headers: {
                     'Authorization': `Bearer ${token}`,
@@ -122,26 +122,31 @@ const SermonListContainer = () => {
                     return;
                 }
                 const errorData = await response.json();
-                throw new Error(errorData?.message || 'Failed to delete sermon.');
+                throw new Error(errorData?.message || 'Failed to delete family.');
             }
-            fetchSermons();
-            addNotification('Sermon deleted successfully!', 'success');
+            addNotification('Family deleted successfully!', 'success');
+            fetchFamilies();
         } catch (err) {
             setError(err.message);
             addNotification(err.message, 'error');
+            console.error(err);
         } finally {
             setLoading(false);
-            setSermonToDeleteId(null);
+            setFamilyIdToDelete(null);
         }
     };
 
-    const handleCancelDelete = () => {
+    const cancelDelete = () => {
         setShowConfirm(false);
-        setSermonToDeleteId(null);
+        setFamilyIdToDelete(null);
     };
 
-    const handleAddSermon = () => {
-        navigate('/sermons/new');
+    const handleAddFamily = () => {
+        navigate('/families/new');
+    };
+
+    const handleViewMembers = (familyId) => {
+        navigate(`/families/${familyId}/members`); // Assuming a route to view family members
     };
 
     return (
@@ -158,28 +163,29 @@ const SermonListContainer = () => {
                 ))}
             </div>
 
-            {loading ? (
-                <p className="status red">Loading sermons...</p>
-            ) : error ? (
-                <p className="error">{error}</p>
-            ) : (
-                <SermonList
-                    sermons={sermons}
-                    onEdit={handleEdit}
-                    onDelete={handleDeleteClick}
-                    onAddSermon={handleAddSermon}
+            {showConfirm && (
+                <ConfirmDialog
+                    message="Are you sure you want to delete this family record? This will not delete associated members."
+                    onConfirm={confirmDelete}
+                    onCancel={cancelDelete}
                 />
             )}
 
-            {showConfirm && (
-                <ConfirmDialog
-                    message="Are you sure you want to delete this sermon?"
-                    onConfirm={handleConfirmDelete}
-                    onCancel={handleCancelDelete}
+            {loading ? (
+                <p className="status red">Loading families...</p>
+            ) : error ? (
+                <p className="error">{error}</p>
+            ) : (
+                <FamilyList
+                    families={families}
+                    onEdit={handleEdit}
+                    onDelete={handleDelete}
+                    onAddFamily={handleAddFamily}
+                    onViewMembers={handleViewMembers}
                 />
             )}
         </>
     );
 };
 
-export default SermonListContainer;
+export default FamilyListContainer;

@@ -65,6 +65,29 @@ const MemberRegistrationContainer = ({ isEditing }) => {
         setError(null);
         try {
             const token = localStorage.getItem('adminToken');
+            const payload = {
+                memberId: formData.memberId, 
+                familyId: formData.familyId || null,
+                departmentId: formData.departmentId || null,
+                firstName: formData.firstName,
+                lastName: formData.lastName,
+                gender: formData.gender,
+                dateOfBirth: formData.dateOfBirth,
+                maritalStatus: formData.maritalStatus,
+                email: formData.email,
+                phoneNumber: formData.phoneNumber,
+                address: formData.address,
+                country: formData.country,
+                city: formData.city,
+                postalCode: formData.postalCode,
+                baptismStatus: formData.baptismStatus,
+                baptismDate: formData.baptismStatus ? formData.baptismDate : null, // Send null if not baptized
+                joinedDate: formData.joinedDate,
+                occupation: formData.occupation,
+                roleInChurch: formData.roleInChurch,
+                profilePictureUrl: formData.profilePictureUrl,
+            };
+
             const url = isEditing ? `${API_BASE}/members/${id}` : `${API_BASE}/members`;
             const method = isEditing ? 'PUT' : 'POST';
 
@@ -74,7 +97,7 @@ const MemberRegistrationContainer = ({ isEditing }) => {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${token}`,
                 },
-                body: JSON.stringify(formData),
+                body: JSON.stringify(payload),
             });
 
             if (!response.ok) {

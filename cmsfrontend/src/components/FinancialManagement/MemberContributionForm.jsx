@@ -8,18 +8,20 @@ const MemberContributionForm = ({ onSubmit, initialData, onCancel }) => {
         dateOfContribution: initialData?.dateOfContribution ? new Date(initialData.dateOfContribution) : new Date(),
         amount: initialData?.amount || '',
         modeOfPayment: initialData?.modeOfPayment || '',
+        contributionType: initialData?.contributionType || '',
         comments: initialData?.comments || '',
-        id: initialData?.id || undefined,
+        contributionId: initialData?.contributionId || undefined,
     });
     const [errors, setErrors] = useState({});
 
     useEffect(() => {
         if (initialData) {
-            setFormData({
+            setFormData(prev => ({
+                ...prev,
                 ...initialData,
                 dateOfContribution: initialData.dateOfContribution ? new Date(initialData.dateOfContribution) : new Date(),
-                id: initialData.id || undefined
-            });
+                contributionId: initialData.contributionId || undefined
+            }));
         } else {
             setFormData({
                 memberId: '',
@@ -27,8 +29,9 @@ const MemberContributionForm = ({ onSubmit, initialData, onCancel }) => {
                 dateOfContribution: new Date(),
                 amount: '',
                 modeOfPayment: '',
+                contributionType: '',
                 comments: '',
-                id: undefined,
+                contributionId: undefined,
             });
         }
     }, [initialData]);
@@ -72,6 +75,10 @@ const MemberContributionForm = ({ onSubmit, initialData, onCancel }) => {
             newErrors.modeOfPayment = 'Mode of Payment is required';
             isValid = false;
         }
+        if (!formData.contributionType.trim()) {
+            newErrors.contributionType = 'Contribution Type is required';
+            isValid = false;
+        }
 
         setErrors(newErrors);
         return isValid;
@@ -81,19 +88,20 @@ const MemberContributionForm = ({ onSubmit, initialData, onCancel }) => {
         e.preventDefault();
         if (validateForm()) {
             const dataToSubmit = {
-                ...(formData.id && { id: formData.id }),
+                ...(formData.contributionId && { contributionId: formData.contributionId }),
                 memberId: formData.memberId,
                 contributorName: formData.contributorName,
                 dateOfContribution: formData.dateOfContribution ? format(formData.dateOfContribution, 'yyyy-MM-dd') : '',
                 amount: Number(formData.amount),
                 modeOfPayment: formData.modeOfPayment,
+                contributionType: formData.contributionType,
                 comments: formData.comments,
             };
             onSubmit(dataToSubmit);
         }
     };
 
-    const isEditing = !!initialData?.id;
+    const isEditing = !!initialData?.contributionId;
 
     return (
         <div className="registration-form">
@@ -154,6 +162,25 @@ const MemberContributionForm = ({ onSubmit, initialData, onCancel }) => {
                     {errors.amount && <p className="error">{errors.amount}</p>}
                 </div>
                 <div className="form-group">
+                    <label htmlFor="contributionType">Contribution Type:</label>
+                    <select
+                        id="contributionType"
+                        name="contributionType"
+                        value={formData.contributionType}
+                        onChange={handleChange}
+                        className={`form-input ${errors.contributionType ? 'input-error' : ''}`}
+                        required
+                    >
+                        <option value="">Select Type</option>
+                        <option value="Tithe">Tithe</option>
+                        <option value="Offering">Offering</option>
+                        <option value="Pledge">Pledge</option>
+                        <option value="Donation">Donation</option>
+                        <option value="Other">Other</option>
+                    </select>
+                    {errors.contributionType && <p className="error">{errors.contributionType}</p>}
+                </div>
+                <div className="form-group">
                     <label htmlFor="modeOfPayment">Mode of Payment:</label>
                     <select
                         id="modeOfPayment"
@@ -166,6 +193,7 @@ const MemberContributionForm = ({ onSubmit, initialData, onCancel }) => {
                         <option value="">Select Mode</option>
                         <option value="Cash">Cash</option>
                         <option value="M-Pesa">M-Pesa</option>
+                        <option value="Bank Transfer">Bank Transfer</option>
                     </select>
                     {errors.modeOfPayment && <p className="error">{errors.modeOfPayment}</p>}
                 </div>

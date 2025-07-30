@@ -1,122 +1,192 @@
 import React, { useState, useEffect } from 'react';
 
 const initialFormState = {
-    id: null,
+    announcementId: null,
     title: '',
     message: '',
-    announcementType: '',
-    dateCreated: '',
-    effectiveDate: '',
-    effectiveUntil: '',
     targetAudience: '',
+    startDate: '',
+    endDate: '',
+    status: 'DRAFT',
 };
 
-const AnnouncementForm = ({ onSubmit, editingAnnouncement, onCancel }) => {
+const AnnouncementForm = ({ onSubmit, editingAnnouncement, onCancel, isEditing }) => {
     const [formData, setFormData] = useState(initialFormState);
+    const [errors, setErrors] = useState({});
 
     useEffect(() => {
         if (editingAnnouncement) {
             setFormData({
                 ...editingAnnouncement,
-                dateCreated: editingAnnouncement.dateCreated ? new Date(editingAnnouncement.dateCreated).toISOString().split('T')[0] : '',
-                effectiveDate: editingAnnouncement.effectiveDate ? new Date(editingAnnouncement.effectiveDate).toISOString().split('T')[0] : '',
-                effectiveUntil: editingAnnouncement.effectiveUntil ? new Date(editingAnnouncement.effectiveUntil).toISOString().split('T')[0] : '',
+                announcementId: editingAnnouncement.announcementId,
+                startDate: editingAnnouncement.startDate ? new Date(editingAnnouncement.startDate).toISOString().split('T')[0] : '',
+                endDate: editingAnnouncement.endDate ? new Date(editingAnnouncement.endDate).toISOString().split('T')[0] : '',
+                status: editingAnnouncement.status || 'DRAFT',
             });
         } else {
-            setFormData(initialFormState);
+            setFormData({
+                ...initialFormState,
+                startDate: new Date().toISOString().split('T')[0],
+            });
         }
     }, [editingAnnouncement]);
 
     const handleChange = (e) => {
         const { name, value } = e.target;
         setFormData((prev) => ({ ...prev, [name]: value }));
+        if (errors[name]) {
+            setErrors((prevErrors) => ({ ...prevErrors, [name]: '' }));
+        }
+    };
+
+    const validateForm = () => {
+        let isValid = true;
+        const newErrors = {};
+
+        if (!formData.title.trim()) {
+            newErrors.title = 'Title is required';
+            isValid = false;
+        }
+        if (!formData.message.trim()) {
+            newErrors.message = 'Message is required';
+            isValid = false;
+        }
+        if (!formData.startDate) {
+            newErrors.startDate = 'Start Date is required';
+            isValid = false;
+        }
+        if (formData.endDate && formData.startDate && new Date(formData.endDate) < new Date(formData.startDate)) {
+            newErrors.endDate = 'End Date cannot be before Start Date';
+            isValid = false;
+        }
+
+        setErrors(newErrors);
+        return isValid;
     };
 
     const handleSubmit = (e) => {
         e.preventDefault();
-        onSubmit(formData);
+        if (validateForm()) {
+            onSubmit(formData);
+        }
     };
 
     return (
         <div className="registration-form">
-            <h2>{editingAnnouncement ? 'Edit Announcement' : 'Create New Announcement'}</h2>
+            <h2 className="dashboard-title">{isEditing ? 'Edit Announcement' : 'Create New Announcement'}</h2>
             <form onSubmit={handleSubmit}>
-                <label>Title:</label>
-                <input
-                    type="text"
-                    name="title"
-                    value={formData.title}
-                    onChange={handleChange}
-                    required
-                    className="form-input"
-                />
+                <div className="form-group">
+                    <label htmlFor="title">Title:</label>
+                    <input
+                        type="text"
+                        id="title"
+                        name="title"
+                        value={formData.title}
+                        onChange={handleChange}
+                        className={`form-input ${errors.title ? 'input-error' : ''}`}
+                        required
+                    />
+                    {errors.title && <p className="error">{errors.title}</p>}
+                </div>
 
-                <label>Message:</label>
-                <textarea
-                    name="message"
-                    value={formData.message}
-                    onChange={handleChange}
-                    className="form-input"
-                    rows="4"
-                />
+                <div className="form-group">
+                    <label htmlFor="message">Message:</label>
+                    <textarea
+                        id="message"
+                        name="message"
+                        value={formData.message}
+                        onChange={handleChange}
+                        className={`form-input ${errors.message ? 'input-error' : ''}`}
+                        rows="4"
+                        required
+                    ></textarea>
+                    {errors.message && <p className="error">{errors.message}</p>}
+                </div>
 
-                <label>Announcement Type:</label>
-                <select
-                    name="announcementType"
-                    value={formData.announcementType}
-                    onChange={handleChange}
-                    required
-                    className="form-input"
-                >
-                    <option value="">Select Type</option>
-                    <option value="GENERAL">General</option>
-                    <option value="EVENT">Event</option>
-                    <option value="URGENT">Urgent</option>
-                </select>
+                <div className="form-group">
+                    <label htmlFor="status">Status:</label>
+                    <select
+                        id="status"
+                        name="status"
+                        value={formData.status}
+                        onChange={handleChange}
+                        required
+                        className="form-input"
+                    >
+                        <option value="DRAFT">Draft</option>
+                        <option value="ACTIVE">Active</option>
+                        <option value="INACTIVE">Inactive</option>
+                        <option value="ARCHIVED">Archived</option>
+                    </select>
+                </div>
 
-                <label>Date Created:</label>
-                <input
-                    type="date"
-                    name="dateCreated"
-                    value={formData.dateCreated}
-                    onChange={handleChange}
-                    required
-                    className="form-input"
-                />
+                {editingAnnouncement && editingAnnouncement.createdAt && (
+                    <div className="form-group">
+                        <label htmlFor="createdAt">Date Created:</label>
+                        <input
+                            type="text"
+                            id="createdAt"
+                            name="createdAt"
+                            value={new Date(editingAnnouncement.createdAt).toLocaleDateString() + ' ' + new Date(editingAnnouncement.createdAt).toLocaleTimeString()}
+                            readOnly
+                            className="form-input"
+                        />
+                    </div>
+                )}
 
-                <label>Effective Date:</label>
-                <input
-                    type="date"
-                    name="effectiveDate"
-                    value={formData.effectiveDate}
-                    onChange={handleChange}
-                    className="form-input"
-                />
+                <div className="form-group">
+                    <label htmlFor="startDate">Start Date (Effective From):</label>
+                    <input
+                        type="date"
+                        id="startDate"
+                        name="startDate"
+                        value={formData.startDate}
+                        onChange={handleChange}
+                        className={`form-input ${errors.startDate ? 'input-error' : ''}`}
+                        required
+                    />
+                    {errors.startDate && <p className="error">{errors.startDate}</p>}
+                </div>
 
-                <label>Effective Until:</label>
-                <input
-                    type="date"
-                    name="effectiveUntil"
-                    value={formData.effectiveUntil}
-                    onChange={handleChange}
-                    className="form-input"
-                />
+                <div className="form-group">
+                    <label htmlFor="endDate">End Date (Effective Until):</label>
+                    <input
+                        type="date"
+                        id="endDate"
+                        name="endDate"
+                        value={formData.endDate}
+                        onChange={handleChange}
+                        className={`form-input ${errors.endDate ? 'input-error' : ''}`}
+                    />
+                    {errors.endDate && <p className="error">{errors.endDate}</p>}
+                </div>
 
-                <label>Target Audience:</label>
-                <input
-                    type="text"
-                    name="targetAudience"
-                    value={formData.targetAudience}
-                    onChange={handleChange}
-                    className="form-input"
-                />
+                <div className="form-group">
+                    <label htmlFor="targetAudience">Target Audience:</label>
+                    <input
+                        type="text"
+                        id="targetAudience"
+                        name="targetAudience"
+                        value={formData.targetAudience}
+                        onChange={handleChange}
+                        className="form-input"
+                        placeholder="e.g., All Members, Youth Group, Leaders"
+                    />
+                </div>
 
-                <div className="form-actions">
-                    <button type="submit">
-                        {editingAnnouncement ? 'Update Announcement' : 'Publish Announcement'}
-                    </button>
-                    <button type="button" className="cancel-btn" onClick={onCancel}>
+                <div className="button-group">
+                    <button
+                        type="button"
+                        onClick={onCancel}
+                        className="cancel-btn"
+                    >
                         Cancel
+                    </button>
+                    <button
+                        type="submit"
+                        className="save-btn"
+                    >
+                        {isEditing ? 'Update Announcement' : 'Publish Announcement'}
                     </button>
                 </div>
             </form>
